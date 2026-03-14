@@ -35,18 +35,22 @@ node scripts/generate.js --prompt "a cat sitting on a windowsill" --output cat.p
 
 ## Server Setup
 
-The gRPC server must be running before generating images.
+The gRPC server must be running before generating images. You can start it in two ways:
 
-### Start Server
+### Option A: Use Draw Things App (Easiest)
+1. Open **Draw Things** on your Mac.
+2. Go to **Settings** and enable **gRPC Server**.
+3. Note the address (default `127.0.0.1:7859`) and TLS setting.
+4. Configure your `.env` to match these settings.
 
-Once configured, simply run:
+### Option B: Use Command Line (Headless)
+Once configured in `.env`, simply run:
 ```bash
 npm run start-server
 ```
-
 Server listens on `127.0.0.1:7859`. First request takes ~30s extra for model loading.
 
-### Run as Background Service
+### Check Server Status
 
 ```bash
 # Start in background
