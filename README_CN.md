@@ -43,7 +43,15 @@ npm install
 
 ### 1. 启动服务器
 
-你可以通过 Draw Things App（设置 > 启用 gRPC 服务器）或命令行启动服务器：
+你可以通过以下两种方式启动 gRPC 服务器：
+
+#### 方式 A：直接使用 Draw Things App（最简单）
+1. 在你的 Mac 上打开 **Draw Things** 应用。
+2. 进入 **Settings (设置)** 并开启 **gRPC Server**。
+3. 完成！你的技能现在可以直接连接到此服务器（默认地址为 `127.0.0.1:7859`）。
+
+#### 方式 B：使用命令行（后台运行）
+如果你更喜欢在没有应用界面的情况下运行服务器，请在 `.env` 中配置 `DRAWTHINGS_SERVER_PATH` 并运行：
 
 ```bash
 npm run start-server

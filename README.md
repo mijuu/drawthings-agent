@@ -45,7 +45,15 @@ npm install
 
 ### 1. Start the Server
 
-You can start the server via the Draw Things App (Settings > Enable gRPC Server) or via CLI:
+You can start the gRPC server in two ways:
+
+#### Option A: Use Draw Things App (Easiest)
+1. Open **Draw Things** on your Mac.
+2. Go to **Settings** and enable **gRPC Server**.
+3. That's it! Your skill can now connect to this server (default `127.0.0.1:7859`).
+
+#### Option B: Use Command Line (Headless)
+If you prefer to run the server without the App UI, configure `DRAWTHINGS_SERVER_PATH` in `.env` and run:
 
 ```bash
 npm run start-server
