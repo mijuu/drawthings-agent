@@ -6,14 +6,20 @@
  * Supports:
  * - gRPC (Port 7859) - High performance, binary configuration.
  * - HTTP (Port 7860) - High stability, WebUI API compatible.
- * 
- * Note: Response Compression (FPY) must be DISABLED in Draw Things settings.
  */
 
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const zlib = require('zlib');
+
+// Initialize logging
+const logFile = path.join(__dirname, '..', 'logs', 'generate.log');
+const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+const log = (msg) => {
+    const timestamp = new Date().toISOString();
+    logStream.write(`[${timestamp}] ${msg}\n`);
+};
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const flatbuffers = require('flatbuffers');
@@ -60,38 +66,32 @@ function decodeFloat16(h) {
 }
 
 function tensorToPng(data, outPath) {
-    // 1. Check for FPY (Fast Pixel Yield) magic bytes
+    // 1. Check for FPY magic bytes
     if (data[0] === 0x66 && data[1] === 0x70 && data[2] === 0x79 && data[3] === 0x29) {
         throw new Error("Received FPY compressed tensor. Please DISABLE 'Response Compression' in Draw Things server settings.");
     }
-
     // 2. Full Buffer Decompression (zlib 0x78, gzip 0x1f 0x8b)
     if (data[0] === 0x78 || (data[0] === 0x1f && data[1] === 0x8b)) {
         try {
             data = data[0] === 0x1f ? zlib.gunzipSync(data) : zlib.inflateSync(data);
         } catch (e) {}
     }
-
     // 3. Direct PNG Check
     if (data[0] === 0x89 && data[1] === 0x50) {
         fs.writeFileSync(outPath, data);
         return;
     }
-
     // 4. Tensor Header Check
     if (data.length < 68) {
         throw new Error(`Data too short: ${data.length} bytes.`);
     }
-
     const h = data.readUInt32LE(24), w = data.readUInt32LE(28), c = data.readUInt32LE(32);
     let pixelData = data.slice(68);
-    
     // 5. Raw Pixel Processing (Float16)
     const expectedSize = w * h * c * 2;
     if (pixelData.length !== expectedSize) {
         throw new Error(`Pixel data size mismatch. Ensure 'Response Compression' is DISABLED in Draw Things.`);
     }
-
     const png = new PNG({ width: w, height: h });
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
@@ -118,37 +118,27 @@ async function runHttp(options, seed, outPath) {
         sampler_name: options.sampler,
         override_settings: { model: options.model }
     });
-
     const [host, port] = options.addr.split(':');
     const requestOptions = {
         hostname: host || '127.0.0.1',
         port: port || 7860,
         path: '/sdapi/v1/txt2img',
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(payload)
-        }
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
     };
-
     console.log(`Generating via HTTP: "${options.prompt}"...`);
     return new Promise((resolve, reject) => {
         const req = http.request(requestOptions, (res) => {
             let data = '';
             res.on('data', (chunk) => data += chunk);
             res.on('end', () => {
-                if (res.statusCode !== 200) {
-                    reject(new Error(`HTTP Error: ${res.statusCode} - ${data}`));
-                    return;
-                }
+                if (res.statusCode !== 200) { reject(new Error(`HTTP Error: ${res.statusCode} - ${data}`)); return; }
                 const response = JSON.parse(data);
                 if (response.images && response.images.length > 0) {
                     const base64Data = response.images[0].replace(/^data:image\/png;base64,/, "");
                     fs.writeFileSync(outPath, Buffer.from(base64Data, 'base64'));
                     resolve(outPath);
-                } else {
-                    reject(new Error("No image data in HTTP response"));
-                }
+                } else { reject(new Error("No image data in HTTP response")); }
             });
         });
         req.on('error', reject);
@@ -159,24 +149,23 @@ async function runHttp(options, seed, outPath) {
 
 async function runGrpc(options, seed, outPath) {
     const packageDefinition = protoLoader.loadSync(path.join(__dirname, 'imageService.proto'), { 
-        keepCase: true,
-        longs: String,
-        enums: String,
-        defaults: true,
-        oneofs: true
+        keepCase: true, longs: String, enums: String, defaults: true, oneofs: true
     });
     const drawthings = grpc.loadPackageDefinition(packageDefinition);
+    
+    // Auto-detect TLS from .env or options
+    const finalTls = options.tls || (process.env.DRAWTHINGS_USE_TLS === 'true');
     
     let credentials;
     let clientOptions = {
         'grpc.max_receive_message_length': -1,
         'grpc.max_send_message_length': -1,
-        'grpc.keepalive_time_ms': 10000,
-        'grpc.keepalive_timeout_ms': 5000,
+        'grpc.keepalive_time_ms': 5000,
+        'grpc.keepalive_timeout_ms': 2000,
         'grpc.keepalive_permit_without_calls': 1
     };
 
-    if (options.tls) {
+    if (finalTls) {
         const caCert = fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'));
         credentials = grpc.credentials.createSsl(caCert);
         clientOptions['grpc.ssl_target_name_override'] = 'localhost';
@@ -189,14 +178,14 @@ async function runGrpc(options, seed, outPath) {
 
     // --- Readiness Check ---
     if (options.wait) {
-        process.stdout.write(`Waiting for server at ${options.addr} to be ready...`);
+        process.stdout.write(`Waiting for server at ${options.addr} (${finalTls ? 'TLS' : 'Insecure'})...`);
         const startTime = Date.now();
         const timeout = parseInt(options.waitTimeout) * 1000;
         let ready = false;
         while (!ready && Date.now() - startTime < timeout) {
             try {
                 await new Promise((resolve, reject) => {
-                    const deadline = Date.now() + 2000;
+                    const deadline = Date.now() + 1500;
                     client.Echo({ name: 'readiness-check' }, { deadline }, (err) => {
                         if (err) reject(err);
                         else resolve();
@@ -209,20 +198,15 @@ async function runGrpc(options, seed, outPath) {
                 await new Promise(r => setTimeout(r, 2000));
             }
         }
-        if (!ready) throw new Error(`Server connection timed out after ${options.waitTimeout}s`);
+        if (!ready) throw new Error(`Server connection timed out after ${options.waitTimeout}s. Check if server TLS setting matches client.`);
     }
 
     const samplerVal = samplerNames[options.sampler];
     const config = buildGenerationConfig(options.model, parseInt(options.width), parseInt(options.height), parseInt(options.steps), seed, parseFloat(options.guidance), samplerVal);
 
     const request = {
-        prompt: options.prompt,
-        negativePrompt: options.negativePrompt,
-        configuration: config,
-        scaleFactor: 1,
-        chunked: true,
-        device: "LAPTOP",
-        user: "OpenClaw"
+        prompt: options.prompt, negativePrompt: options.negativePrompt, configuration: config,
+        scaleFactor: 1, chunked: true, device: "LAPTOP", user: "OpenClaw"
     };
 
     console.log(`Generating via gRPC: "${options.prompt}"...`);
@@ -232,20 +216,17 @@ async function runGrpc(options, seed, outPath) {
     return new Promise((resolve, reject) => {
         const call = client.GenerateImage(request);
         let chunks = Buffer.alloc(0);
-        
         call.on('data', (response) => {
             if (response.currentSignpost) {
                 const signpost = response.currentSignpost;
                 if (signpost.sampling) {
-                    if (firstStepTime === null && signpost.sampling.step > 0) {
-                        firstStepTime = Date.now();
-                    }
+                    if (firstStepTime === null && signpost.sampling.step > 0) firstStepTime = Date.now();
                     let etaStr = '';
                     if (firstStepTime && signpost.sampling.step > 0) {
-                        const elapsedSinceFirst = Date.now() - firstStepTime;
-                        const avgTimePerStep = elapsedSinceFirst / signpost.sampling.step;
-                        const remainingSteps = options.steps - signpost.sampling.step;
-                        const etaSec = Math.round((avgTimePerStep * remainingSteps) / 1000);
+                        const elapsed = Date.now() - firstStepTime;
+                        const avgTime = elapsed / signpost.sampling.step;
+                        const remaining = options.steps - signpost.sampling.step;
+                        const etaSec = Math.round((avgTime * remaining) / 1000);
                         if (etaSec >= 0) etaStr = ` (ETA: ${etaSec}s)`;
                     }
                     process.stdout.write(`\rSampling step: ${signpost.sampling.step}/${options.steps}${etaStr}...`);
@@ -254,30 +235,29 @@ async function runGrpc(options, seed, outPath) {
                 }
             }
             if (response.generatedImages) {
-                for (const img of response.generatedImages) {
-                    if (img.length > 0) chunks = Buffer.concat([chunks, img]);
-                }
+                for (const img of response.generatedImages) if (img.length > 0) chunks = Buffer.concat([chunks, img]);
             }
         });
-
-        call.on('error', (err) => {
-            reject(new Error(`gRPC Error: ${err.message}`));
-        });
-
+        call.on('error', (err) => reject(new Error(`gRPC Error: ${err.message}`)));
         call.on('end', () => {
-            if (chunks.length === 0) {
-                reject(new Error("No image received via gRPC"));
-                return;
-            }
-            try {
-                tensorToPng(chunks, outPath);
-                resolve(outPath);
-            } catch (e) {
-                reject(e);
-            }
+            if (chunks.length === 0) { reject(new Error("No image received")); return; }
+            try { tensorToPng(chunks, outPath); resolve(outPath); } catch (e) { reject(e); }
         });
     });
 }
+
+// Basic .env parser for standalone use
+function loadEnv() {
+    const envPath = path.join(__dirname, '..', '.env');
+    if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf8');
+        content.split('\n').forEach(line => {
+            const [key, ...value] = line.split('=');
+            if (key && value.length > 0) process.env[key.trim()] = value.join('=').trim().replace(/^"(.*)"$/, '$1');
+        });
+    }
+}
+loadEnv();
 
 program
     .option('--prompt <text>', 'Prompt', 'a cat')
@@ -294,8 +274,8 @@ program
     .option('--http', 'Force HTTP')
     .option('--grpc', 'Force gRPC')
     .option('--tls', 'Enable TLS')
-    .option('--wait', 'Wait for server to be ready before generating', true)
-    .option('--wait-timeout <sec>', 'Max time to wait for server', '60')
+    .option('--wait', 'Wait for server', true)
+    .option('--wait-timeout <sec>', 'Max wait', '60')
     .option('--health', 'Check health')
     .option('--list-models', 'List models')
     .parse(process.argv);
@@ -303,14 +283,24 @@ program
 const options = program.opts();
 
 async function main() {
+    const finalAddr = options.addr || process.env.DRAWTHINGS_SERVER_ADDR || '127.0.0.1:7859';
+    options.addr = finalAddr;
+
+    // --- Truncation Check ---
+    if (options.prompt && (options.prompt.endsWith('...') || options.prompt.endsWith('…'))) {
+        console.error(`ERROR: The prompt appears to be truncated ("${options.prompt}").`);
+        console.error("AI: You MUST provide the FULL prompt text. DO NOT use ellipses or abbreviations.");
+        process.exit(1);
+    }
+
     if (options.health || options.list_models) {
-        const finalAddr = options.addr || '127.0.0.1:7859';
         const packageDefinition = protoLoader.loadSync(path.join(__dirname, 'imageService.proto'), { keepCase: true });
         const drawthings = grpc.loadPackageDefinition(packageDefinition);
-        let credentials = options.tls ? grpc.credentials.createSsl(fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'))) : grpc.credentials.createInsecure();
+        const finalTls = options.tls || (process.env.DRAWTHINGS_USE_TLS === 'true');
+        let credentials = finalTls ? grpc.credentials.createSsl(fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'))) : grpc.credentials.createInsecure();
         const client = new drawthings.ImageGenerationService(finalAddr, credentials);
         client.Echo({ name: 'health-check' }, (err, response) => {
-            if (err) { console.error(`Health check failed: ${err.message}`); process.exit(1); }
+            if (err) { console.error(`Health check failed (${finalTls ? 'TLS' : 'Insecure'}): ${err.message}`); process.exit(1); }
             if (options.list_models) response.files.forEach(f => console.log(`- ${f}`));
             else console.log('Server is healthy:', response.message);
             process.exit(0);
@@ -325,16 +315,18 @@ async function main() {
     const outPath = path.resolve(options.output || path.join(outputDir, `output_${Date.now()}.png`));
     if (!fs.existsSync(path.dirname(outPath))) fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
-    let useHttp = options.http || (!options.grpc && options.addr && options.addr.includes('7860'));
-    const finalAddr = options.addr || (useHttp ? '127.0.0.1:7860' : '127.0.0.1:7859');
+    let useHttp = options.http || (!options.grpc && finalAddr.includes('7860'));
     options.addr = finalAddr;
 
     try {
+        log(`Generating image - Prompt: "${options.prompt}", Steps: ${options.steps}, Seed: ${seed}, Model: ${options.model}`);
         const result = await (useHttp ? runHttp(options, seed, outPath) : runGrpc(options, seed, outPath));
         console.log(`Image saved to: ${result}`);
+        log(`Success: Image saved to ${result}`);
         process.exit(0);
     } catch (err) {
         console.error(`Generation failed: ${err.message}`);
+        log(`Error: Generation failed - ${err.message}`);
         process.exit(1);
     }
 }

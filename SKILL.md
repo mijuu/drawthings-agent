@@ -1,6 +1,6 @@
 ---
 name: drawthings
-description: AI image generation using Draw Things gRPC server on macOS. Use when user asks to generate images, create AI art, or produce images from text prompts. You MUST inform the user that generation will take about 30-60 seconds before starting. After generating, you MUST use 'read_file' on the resulting output path to display the image. Supports turbo models (z_image_turbo).
+description: AI image generation using Draw Things gRPC server on macOS. Use when user asks to generate images, create AI art, or produce images from text prompts. You MUST inform the user that generation will take about 1-2 minutes (60-120s) before starting. After generating, you MUST use 'read_file' on the resulting output path to display the image. Supports turbo models (z_image_turbo).
 ---
 
 # Draw Things Image Generation
@@ -11,8 +11,13 @@ Generate images using a long-running Draw Things gRPC server on macOS.
 
 The Draw Things server should be managed as a persistent background service.
 
+### ⚠️ AI CRITICAL STATUS INSTRUCTIONS
+- **DO NOT use `ps`, `lsof`, `netstat`, or `curl`** to check if the server is "ready". A running process or open port does NOT mean the server can generate images (it might still be loading models).
+- **ONLY use `npm run server:status`** to check readiness. This command performs a real gRPC handshake which is the only authoritative way to confirm the server is functional.
+- If `server:status` fails but `server:start` was recently called, **WAIT and retry** the status check after 10-20 seconds.
+
 ### 1. Check Server Status
-Always check if the server is running and ready before starting a generation task:
+Always check if the server is truly ready using the official script:
 ```bash
 npm run server:status
 ```
@@ -34,6 +39,15 @@ npm run server:stop
 ## Generation Task
 
 Use `scripts/generate.js` for image generation. It automatically waits for the server to be ready.
+
+### ⚠️ AI CRITICAL INSTRUCTIONS
+- **NEVER truncate the prompt**: Provide the FULL text. No ellipses `...` or `…`.
+- **STRICT QUOTING**: 
+  - Always use balanced quotes. For every opening quote (`'` or `"`), there MUST be a closing quote.
+  - Prefer single quotes `'prompt text'` for the `--prompt` argument to avoid shell interpolation issues, unless the prompt itself contains a single quote.
+  - **NEVER** leave a command ending with a backtick `` ` `` or a single unmatched quote.
+- **NO TRAILING SYMBOLS**: Ensure the command ends exactly after the last argument. Do not add any extra periods, backticks, or "smart" characters at the end.
+- **Avoid smart characters**: Ensure all arguments use standard ASCII characters.
 
 ## Prerequisites
 
