@@ -16,6 +16,7 @@
 - **macOS**：Draw Things 是一款 macOS 原生应用。
 - **Draw Things App**：已安装并下载了所需的模型。
 - **Node.js**：版本 16 或更高。
+- **重要设置**：在 Draw Things 的设置中，**禁用 "Response Compression" (响应压缩)** (也称为 FPY)。该脚本目前不支持 FPY 压缩的张量。
 
 ## 📦 安装
 

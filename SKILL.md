@@ -1,15 +1,45 @@
 ---
 name: drawthings
-description: AI image generation using Draw Things gRPC server on macOS. Use when user asks to generate images, create AI art, or produce images from text prompts. After generating an image, you MUST use 'read_file' on the resulting output path to display the image to the user. Supports turbo models (z_image_turbo) for fast ~30-60s generation.
+description: AI image generation using Draw Things gRPC server on macOS. Use when user asks to generate images, create AI art, or produce images from text prompts. You MUST inform the user that generation will take about 30-60 seconds before starting. After generating, you MUST use 'read_file' on the resulting output path to display the image. Supports turbo models (z_image_turbo).
 ---
 
 # Draw Things Image Generation
 
-Generate images using Draw Things gRPC server on macOS.
+Generate images using a long-running Draw Things gRPC server on macOS.
 
-## ✅ Current Status: Pure Node.js Implementation
+## Service Management
 
-The skill fully supports the gRPC protocol used by Draw Things, including real-time progress updates and efficient tensor decoding. It uses standard Node.js libraries for maximum performance and compatibility.
+The Draw Things server should be managed as a persistent background service.
+
+### 1. Check Server Status
+Always check if the server is running and ready before starting a generation task:
+```bash
+npm run server:status
+```
+
+### 2. Start the Server
+If status check fails, start the server in the background:
+```bash
+# Must be run with is_background: true
+npm run server:start
+```
+The server may take 30-60 seconds to load models. Generation scripts will automatically wait for it.
+
+### 3. Stop the Server
+When image generation tasks are finished for the day, free up system resources:
+```bash
+npm run server:stop
+```
+
+## Generation Task
+
+Use `scripts/generate.js` for image generation. It automatically waits for the server to be ready.
+
+## Prerequisites
+
+-   **Draw Things**: Installed on macOS.
+-   **gRPC Server**: Running (via `npm run start-server` or manually).
+-   **CRITICAL SETTING**: In Draw Things settings, **DISABLE "Response Compression"** (also known as FPY). This script does not support FPY compressed tensors.
 
 ## Configuration
 

@@ -45,10 +45,14 @@ console.log(`Starting Draw Things server: ${finalServerPath}`);
 console.log(`Models directory: ${finalModelsPath}`);
 console.log(`TLS: ${useTls ? 'Enabled' : 'Disabled (Insecure)'}`);
 
+const host = addr[0] || '127.0.0.1';
+const port = addr[1] || '7859';
+
 const args = [
     '--model-browser',
     '--no-response-compression',
-    '--address', addr[0] || '127.0.0.1',
+    '--address', host,
+    '--port', port,
     finalModelsPath
 ];
 

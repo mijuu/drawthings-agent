@@ -18,6 +18,7 @@ A high-performance Node.js skill for [OpenClaw](https://github.com/mijuu/opencla
 - **macOS**: Draw Things is a macOS-native application.
 - **Draw Things App**: Installed with models downloaded.
 - **Node.js**: Version 16 or higher.
+- **CRITICAL SETTING**: In Draw Things settings, **DISABLE "Response Compression"** (also known as FPY). This script does not support FPY compressed tensors.
 
 ## 📦 Installation
 
