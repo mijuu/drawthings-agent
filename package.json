@@ -1,0 +1,30 @@
+{
+  "name": "drawthings",
+  "version": "1.0.0",
+  "description": "Draw Things AI image generation for OpenClaw",
+  "main": "scripts/generate.js",
+  "bin": {
+    "dtgen": "./scripts/generate.js"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.js",
+    "health": "node scripts/generate.js --health",
+    "models": "node scripts/generate.js --list-models",
+    "start-server": "node scripts/start-server.js"
+  },
+  "keywords": [
+    "drawthings",
+    "ai",
+    "image-generation",
+    "grpc"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.12.6",
+    "@grpc/proto-loader": "^0.7.13",
+    "commander": "^13.1.0",
+    "flatbuffers": "^25.9.23",
+    "pngjs": "^7.0.0"
+  }
+}

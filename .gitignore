@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Local configuration and IDE settings
+.obsidian/
+.DS_Store
+
+# Test outputs and images
+*.png
+!scripts/imageService.proto
+
+# Logs and environment files
+*.log
+.env
