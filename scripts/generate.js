@@ -154,7 +154,24 @@ async function runGrpc(options, seed, outPath) {
         oneofs: true
     });
     const drawthings = grpc.loadPackageDefinition(packageDefinition);
-    const client = new drawthings.ImageGenerationService(options.addr, grpc.credentials.createInsecure());
+    
+    // Support SSL/TLS
+    let credentials;
+    let clientOptions = {
+        'grpc.max_receive_message_length': -1,
+        'grpc.max_send_message_length': -1
+    };
+
+    if (options.tls) {
+        const caCert = fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'));
+        credentials = grpc.credentials.createSsl(caCert);
+        clientOptions['grpc.ssl_target_name_override'] = 'localhost';
+        clientOptions['grpc.default_authority'] = 'localhost';
+    } else {
+        credentials = grpc.credentials.createInsecure();
+    }
+
+    const client = new drawthings.ImageGenerationService(options.addr, credentials, clientOptions);
 
     const samplerVal = samplerNames[options.sampler];
     const config = buildGenerationConfig(options.model, parseInt(options.width), parseInt(options.height), parseInt(options.steps), seed, parseFloat(options.guidance), samplerVal);
@@ -228,6 +245,7 @@ program
     .option('--addr <host:port>', 'Address')
     .option('--http', 'Force HTTP protocol (Port 7860)')
     .option('--grpc', 'Force gRPC protocol (Port 7859)')
+    .option('--tls', 'Enable SSL/TLS for gRPC')
     .option('--health', 'Check server health')
     .option('--list-models', 'List available models')
     .parse(process.argv);
@@ -239,7 +257,23 @@ async function main() {
         const finalAddr = options.addr || '127.0.0.1:7859';
         const packageDefinition = protoLoader.loadSync(path.join(__dirname, 'imageService.proto'), { keepCase: true });
         const drawthings = grpc.loadPackageDefinition(packageDefinition);
-        const client = new drawthings.ImageGenerationService(finalAddr, grpc.credentials.createInsecure());
+        
+        let credentials;
+        let clientOptions = {
+            'grpc.max_receive_message_length': -1,
+            'grpc.max_send_message_length': -1
+        };
+
+        if (options.tls) {
+            const caCert = fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'));
+            credentials = grpc.credentials.createSsl(caCert);
+            clientOptions['grpc.ssl_target_name_override'] = 'localhost';
+            clientOptions['grpc.default_authority'] = 'localhost';
+        } else {
+            credentials = grpc.credentials.createInsecure();
+        }
+
+        const client = new drawthings.ImageGenerationService(finalAddr, credentials, clientOptions);
         
         client.Echo({ name: 'health-check' }, (err, response) => {
             if (err) {

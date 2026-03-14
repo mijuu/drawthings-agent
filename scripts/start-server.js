@@ -39,16 +39,22 @@ if (!serverPath || !modelsPath) {
 const finalServerPath = serverPath.replace(/^~/, process.env.HOME);
 const finalModelsPath = modelsPath.replace(/^~/, process.env.HOME);
 
+const useTls = process.env.DRAWTHINGS_USE_TLS === 'true';
+
 console.log(`Starting Draw Things server: ${finalServerPath}`);
 console.log(`Models directory: ${finalModelsPath}`);
+console.log(`TLS: ${useTls ? 'Enabled' : 'Disabled (Insecure)'}`);
 
 const args = [
     '--model-browser',
-    '--no-tls',
     '--no-response-compression',
     '--address', addr[0] || '127.0.0.1',
     finalModelsPath
 ];
+
+if (!useTls) {
+    args.push('--no-tls');
+}
 
 const server = spawn(finalServerPath, args, { stdio: 'inherit' });
 
