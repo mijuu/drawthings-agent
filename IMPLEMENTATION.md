@@ -18,9 +18,9 @@ node scripts/generate.js --prompt "a beautiful landscape" --output output.png
 ## Known Issues
 
 -   **gRPC Server Version**: Ensure you are using a version of `gRPCServerCLI-macOS` that implements `GenerateImage`. If you receive a `StatusCode.UNIMPLEMENTED` error, the server binary is likely outdated or incompatible.
--   **FlatBuffer Slots**: The slot indices (e.g., `slotID = 0`, `slotStartWidth = 1`) are based on the reference Go implementation. If the server protocol changes, these may need adjustment.
+- **FlatBuffer Slots**: The slot indices (e.g., `slotID = 0`, `slotStartWidth = 1`) are defined in `scripts/generate.js`. If the server protocol changes, these may need adjustment.
 
 ## Reference
 
--   Go Implementation: `reference_go/main.go`
 -   Proto Definition: `scripts/imageService.proto`
+

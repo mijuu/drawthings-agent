@@ -29,7 +29,9 @@ const { program } = require('commander');
 // VTable slot indices for gRPC
 const slots = {
     id: 0, start_width: 1, start_height: 2, seed: 3, steps: 4, guidance_scale: 5, strength: 6, model: 7, sampler: 8,
-    batch_count: 9, batch_size: 10
+    batch_count: 9, batch_size: 10,
+    upscaler: 15,
+    upscaler_scale_factor: 63
 };
 
 const samplerNames = {
@@ -39,9 +41,11 @@ const samplerNames = {
     "unicpc-trailing": 17, "unicpc-ays": 18, "tcd-trailing": 19
 };
 
-function buildGenerationConfig(model, width, height, steps, seed, guidanceScale, sampler) {
+function buildGenerationConfig(model, width, height, steps, seed, guidanceScale, sampler, upscaler = null, upscalerScaleFactor = 0) {
     const builder = new flatbuffers.Builder(1024);
     const modelOff = builder.createString(model);
+    const upscalerOff = upscaler ? builder.createString(upscaler) : null;
+
     builder.startObject(86);
     builder.addFieldInt64(slots.id, BigInt(0), BigInt(0));
     builder.addFieldInt16(slots.start_width, width / 64, 0);
@@ -52,11 +56,16 @@ function buildGenerationConfig(model, width, height, steps, seed, guidanceScale,
     builder.addFieldFloat32(slots.strength, 1.0, 0);
     builder.addFieldOffset(slots.model, modelOff, 0);
     builder.addFieldInt8(slots.sampler, sampler, 0);
+    
+    if (upscalerOff) {
+        builder.addFieldOffset(slots.upscaler, upscalerOff, 0);
+        builder.addFieldInt8(slots.upscaler_scale_factor, upscalerScaleFactor, 0);
+    }
+
     const cfg = builder.endObject();
     builder.finish(cfg);
     return Buffer.from(builder.asUint8Array());
 }
-
 function decodeFloat16(h) {
     const s = (h >> 15) & 1, e = (h >> 10) & 0x1f, f = h & 0x3ff;
     if (e === 0) { if (f === 0) return s ? -0 : 0; let ee = e, ff = f; while ((ff & 0x400) === 0) { ff <<= 1; ee--; } ee++; ff &= 0x3ff; return 0; }
@@ -202,12 +211,34 @@ async function runGrpc(options, seed, outPath) {
     }
 
     const samplerVal = samplerNames[options.sampler];
-    const config = buildGenerationConfig(options.model, parseInt(options.width), parseInt(options.height), parseInt(options.steps), seed, parseFloat(options.guidance), samplerVal);
+    const upscaleFactor = parseInt(options.upscale || 1);
+    const upscalerFile = upscaleFactor > 1 ? (options.upscaler || 'realesrgan_x4plus_f16.ckpt') : null;
+
+    const config = buildGenerationConfig(
+        options.model, 
+        parseInt(options.width), 
+        parseInt(options.height), 
+        parseInt(options.steps), 
+        seed, 
+        parseFloat(options.guidance), 
+        samplerVal,
+        upscalerFile,
+        upscaleFactor > 1 ? upscaleFactor : 0
+    );
 
     const request = {
-        prompt: options.prompt, negativePrompt: options.negativePrompt, configuration: config,
-        scaleFactor: 1, chunked: true, device: "LAPTOP", user: "OpenClaw"
+        prompt: options.prompt, 
+        negativePrompt: options.negativePrompt, 
+        configuration: config,
+        scaleFactor: upscaleFactor, 
+        chunked: true, 
+        device: "LAPTOP", 
+        user: "OpenClaw"
     };
+
+    if (upscaleFactor > 1) {
+        console.log(`Upscaling enabled: ${upscaleFactor}x using ${upscalerFile}`);
+    }
 
     console.log(`Generating via gRPC: "${options.prompt}"...`);
     const startTime = Date.now();
@@ -217,6 +248,7 @@ async function runGrpc(options, seed, outPath) {
         const call = client.GenerateImage(request);
         let chunks = Buffer.alloc(0);
         call.on('data', (response) => {
+            if (response.scaleFactor) console.log(`Response Scale Factor: ${response.scaleFactor}`);
             if (response.currentSignpost) {
                 const signpost = response.currentSignpost;
                 if (signpost.sampling) {
@@ -232,6 +264,8 @@ async function runGrpc(options, seed, outPath) {
                     process.stdout.write(`\rSampling step: ${signpost.sampling.step}/${options.steps}${etaStr}...`);
                 } else if (signpost.imageDecoded) {
                     process.stdout.write(`\nImage decoded (Total time: ${((Date.now() - startTime) / 1000).toFixed(1)}s)\n`);
+                } else if (signpost.imageUpscaled) {
+                    process.stdout.write(`Image upscaled!\n`);
                 }
             }
             if (response.generatedImages) {
@@ -273,6 +307,8 @@ program
     .option('--guidance <f>', 'Guidance', '1.0')
     .option('--sampler <name>', 'Sampler', 'unicpc-trailing')
     .option('--model <filename>', 'Model', 'z_image_turbo_1.0_q6p.ckpt')
+    .option('--upscale <factor>', 'Upscale factor (e.g. 2, 4)', '1')
+    .option('--upscaler <filename>', 'Upscaler model filename', 'realesrgan_x4plus_f16.ckpt')
     .option('--output <path>', 'Output path')
     .option('--addr <host:port>', 'Address')
     .option('--http', 'Force HTTP')
@@ -287,6 +323,7 @@ program
 const options = program.opts();
 
 async function main() {
+    console.log('DEBUG OPTIONS:', options);
     const finalAddr = options.addr || process.env.DRAWTHINGS_SERVER_ADDR || '127.0.0.1:7859';
     options.addr = finalAddr;
 
@@ -297,19 +334,95 @@ async function main() {
         process.exit(1);
     }
 
-    if (options.health || options.list_models) {
+    if (options.health || options.listModels) {
         const packageDefinition = protoLoader.loadSync(path.join(__dirname, 'imageService.proto'), { keepCase: true });
         const drawthings = grpc.loadPackageDefinition(packageDefinition);
         const finalTls = options.tls || (process.env.DRAWTHINGS_USE_TLS !== 'false');
         let credentials = finalTls ? grpc.credentials.createSsl(fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'))) : grpc.credentials.createInsecure();
         const client = new drawthings.ImageGenerationService(finalAddr, credentials);
-        client.Echo({ name: 'health-check' }, (err, response) => {
-            if (err) { console.error(`Health check failed (${finalTls ? 'TLS' : 'Insecure'}): ${err.message}`); process.exit(1); }
-            if (options.list_models) response.files.forEach(f => console.log(`- ${f}`));
-            else console.log('Server is healthy:', response.message);
+        
+        try {
+            const response = await new Promise((resolve, reject) => {
+                const echoName = 'health-check'; 
+                client.Echo({ name: echoName }, (err, res) => {
+                    if (err) reject(err);
+                    else resolve(res);
+                });
+            });
+
+            // 1. Decode Overrides (Used by both health and listModels)
+            const readableOverride = {};
+            if (response.override) {
+                for (const [key, value] of Object.entries(response.override)) {
+                    if (Buffer.isBuffer(value)) {
+                        const str = value.toString('utf8');
+                        try { readableOverride[key] = JSON.parse(str); }
+                        catch (e) { readableOverride[key] = str; }
+                    } else {
+                        readableOverride[key] = value;
+                    }
+                }
+            }
+
+            if (options.listModels) {
+                const upscalerKeywords = ['upscale', 'realesrgan', 'esrgan', 'hat', 'swin', 'swinir', 'nmkd', '4x', '2x'];
+                const upscalers = [];
+                const models = [];
+                const others = [];
+
+                // Extract from metadata (Active Models)
+                if (readableOverride.models && Array.isArray(readableOverride.models)) {
+                    readableOverride.models.forEach(m => models.push(m.name ? `${m.name} (${m.file})` : (m.file || m)));
+                }
+                if (readableOverride.upscalers && Array.isArray(readableOverride.upscalers)) {
+                    readableOverride.upscalers.forEach(u => upscalers.push(u.name ? `${u.name} (${u.file})` : (u.file || u)));
+                }
+
+                // Extract from file list (Raw Files)
+                if (response.files) {
+                    response.files.forEach(f => {
+                        const fl = f.toLowerCase();
+                        if (upscalerKeywords.some(kw => fl.includes(kw))) {
+                            if (!upscalers.some(u => u.includes(f))) upscalers.push(f);
+                        } else if (fl.endsWith('.ckpt') || fl.endsWith('.safetensors')) {
+                            if (!models.some(m => m.includes(f))) models.push(f);
+                        } else {
+                            others.push(f);
+                        }
+                    });
+                }
+
+                console.log('--- Available Models ---');
+                if (models.length > 0) {
+                    models.sort().forEach(m => console.log(`[Model] ${m}`));
+                } else {
+                    console.log('(No models found)');
+                }
+
+                console.log('\n--- Detected Upscaler Models ---');
+                if (upscalers.length > 0) {
+                    upscalers.sort().forEach(u => console.log(`[Upscaler] ${u}`));
+                } else {
+                    console.log('(No specific upscaler models found)');
+                }
+
+                if (others.length > 0) {
+                    console.log('\n--- Other Files ---');
+                    others.sort().slice(0, 50).forEach(f => console.log(`- ${f}`));
+                    if (others.length > 50) console.log(`... and ${others.length - 50} more files.`);
+                }
+            } else {
+                console.log('Server is healthy:', response.message);
+                if (Object.keys(readableOverride).length > 0) {
+                    console.log('Server Overrides:', JSON.stringify(readableOverride, null, 2));
+                }
+            }
             process.exit(0);
-        });
-        return;
+        } catch (err) {
+            console.error(`Health check failed (${finalTls ? 'TLS' : 'Insecure'}): ${err.message}`);
+            process.exit(1);
+        }
+        return; // Ensure we don't fall through to generation
     }
 
     const seed = options.seed === '0' ? Math.floor(Math.random() * 2**32) : parseInt(options.seed);

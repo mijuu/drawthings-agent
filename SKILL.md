@@ -136,13 +136,19 @@ See `scripts/generate.js` for the Node.js CLI.
   - **Cinema (21:9)**: `--width 1344 --height 576`.
   - **Note**: Larger resolutions (e.g., >1024px) significantly increase generation time and memory usage.
 
+- **Upscaling (`--upscale`, `--upscaler`)**:
+  - **Scale Factor**: Use `--upscale 2` or `--upscale 4`. **MANDATORY**: Only use integer factors (2 or 4).
+  - **4K Goal**: To reach ~4K resolution, start with `--width 1024 --height 576` and use `--upscale 4`.
+  - **Upscaler Model**: Default is `realesrgan_x4plus_f16.ckpt` (ESRGAN). This is highly recommended for most photographic and artistic content.
+  - **Note**: Upscaling happens **natively** on the Draw Things server after the initial generation. It adds significant processing time (30-60s extra) but produces high-fidelity results.
+
 ### Usage Examples with Advanced Parameters
 ```bash
-# High quality turbo generation
-node scripts/generate.js --prompt "cyberpunk street" --steps 10 --guidance 1.5
+# High quality turbo generation with 4K upscale (Native)
+node scripts/generate.js --prompt "a majestic dragon in a crystal cave" --upscale 4
 
-# Standard model generation (non-turbo)
-node scripts/generate.js --prompt "oil painting of a dog" --model sd_xl_base_1.0.safetensors --steps 30 --guidance 7.5
+# Portrait mode with 2x upscale
+node scripts/generate.js --prompt "cyberpunk street" --width 576 --height 1024 --upscale 2
 ```
 
 ## Available Models
