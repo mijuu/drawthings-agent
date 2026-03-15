@@ -153,8 +153,8 @@ async function runGrpc(options, seed, outPath) {
     });
     const drawthings = grpc.loadPackageDefinition(packageDefinition);
     
-    // Auto-detect TLS from .env or options
-    const finalTls = options.tls || (process.env.DRAWTHINGS_USE_TLS === 'true');
+    // Auto-detect TLS from .env or options, default to true unless 'false'
+    const finalTls = options.tls || (process.env.DRAWTHINGS_USE_TLS !== 'false');
     
     let credentials;
     let clientOptions = {
@@ -249,13 +249,17 @@ async function runGrpc(options, seed, outPath) {
 // Basic .env parser for standalone use
 function loadEnv() {
     const envPath = path.join(__dirname, '..', '.env');
-    if (fs.existsSync(envPath)) {
-        const content = fs.readFileSync(envPath, 'utf8');
-        content.split('\n').forEach(line => {
-            const [key, ...value] = line.split('=');
-            if (key && value.length > 0) process.env[key.trim()] = value.join('=').trim().replace(/^"(.*)"$/, '$1');
-        });
-    }
+    if (!fs.existsSync(envPath)) return;
+    const content = fs.readFileSync(envPath, 'utf8');
+    content.split(/\r?\n/).forEach(line => {
+        line = line.trim();
+        if (!line || line.startsWith('#')) return;
+        const [key, ...valueParts] = line.split('=');
+        if (key && valueParts.length > 0) {
+            const value = valueParts.join('=').trim().replace(/^["'](.*)["']$/, '$1');
+            process.env[key.trim()] = value;
+        }
+    });
 }
 loadEnv();
 
@@ -296,7 +300,7 @@ async function main() {
     if (options.health || options.list_models) {
         const packageDefinition = protoLoader.loadSync(path.join(__dirname, 'imageService.proto'), { keepCase: true });
         const drawthings = grpc.loadPackageDefinition(packageDefinition);
-        const finalTls = options.tls || (process.env.DRAWTHINGS_USE_TLS === 'true');
+        const finalTls = options.tls || (process.env.DRAWTHINGS_USE_TLS !== 'false');
         let credentials = finalTls ? grpc.credentials.createSsl(fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'))) : grpc.credentials.createInsecure();
         const client = new drawthings.ImageGenerationService(finalAddr, credentials);
         client.Echo({ name: 'health-check' }, (err, response) => {

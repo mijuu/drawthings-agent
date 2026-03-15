@@ -11,10 +11,11 @@ Generate images using a long-running Draw Things gRPC server on macOS.
 
 The Draw Things server should be managed as a persistent background service.
 
-### ⚠️ AI CRITICAL STATUS INSTRUCTIONS
-- **DO NOT use `ps`, `lsof`, `netstat`, or `curl`** to check if the server is "ready". A running process or open port does NOT mean the server can generate images (it might still be loading models).
-- **ONLY use `npm run server:status`** to check readiness. This command performs a real gRPC handshake which is the only authoritative way to confirm the server is functional.
-- If `server:status` fails but `server:start` was recently called, **WAIT and retry** the status check after 10-20 seconds.
+### ⚠️ AI CRITICAL SERVICE MANAGEMENT RULES
+- **FORBIDDEN**: NEVER manually execute the Draw Things server binary (e.g., `gRPCServerCLI-macOS`).
+- **FORBIDDEN**: NEVER manually `kill` or `pkill` the server process.
+- **MANDATORY**: ALWAYS use the provided `npm` scripts below. These scripts ensure correct TLS settings, log redirection, and environment variable loading.
+- **MANDATORY**: If the server configuration in `.env` changes, you MUST use `npm run server:restart`.
 
 ### 1. Check Server Status
 Always check if the server is truly ready using the official script:
@@ -28,9 +29,15 @@ If status check fails, start the server in the background:
 # Must be run with is_background: true
 npm run server:start
 ```
-The server may take 30-60 seconds to load models. Generation scripts will automatically wait for it.
 
-### 3. Stop the Server
+### 3. Restart the Server
+Use this to apply `.env` changes or recover from an unstable state:
+```bash
+# Use when configuration changes or server is unresponsive
+npm run server:restart
+```
+
+### 4. Stop the Server
 When image generation tasks are finished for the day, free up system resources:
 ```bash
 npm run server:stop
@@ -108,41 +115,34 @@ echo $! > drawthings-grpc-server.pid
 
 See `scripts/generate.js` for the Node.js CLI.
 
-### Usage
+### Parameter Optimization Guidelines
+- **Steps (`--steps`)**: 
+  - For `z_image_turbo`: Use **4-10 steps** (Default: 8). Going higher adds little quality but more time.
+  - For standard SDXL/SD1.5: Use **20-35 steps**.
+- **Guidance (`--guidance`)**: 
+  - For Turbo models: Keep it low, **1.0 - 2.0**.
+  - For standard models: **7.0 - 9.0** is usually best.
+- **Samplers (`--sampler`)**:
+  - `unicpc-trailing`: Best for most cases.
+  - `euler-a-trailing`: Good for artistic/diverse results.
+- **Negative Prompt (`--negative-prompt`)**: Always include "blurry, low quality, distorted" if the user wants high quality but hasn't provided a negative prompt.
 
+- **Resolution (`--width`, `--height`)**: 
+  - **MANDATORY**: Both width and height MUST be multiples of **64**.
+  - **Standard (16:9)**: `--width 1024 --height 576` (Default).
+  - **Portrait (9:16)**: `--width 576 --height 1024`.
+  - **Square (1:1)**: `--width 1024 --height 1024` or `--width 512 --height 512`.
+  - **Classic (4:3)**: `--width 1024 --height 768`.
+  - **Cinema (21:9)**: `--width 1344 --height 576`.
+  - **Note**: Larger resolutions (e.g., >1024px) significantly increase generation time and memory usage.
+
+### Usage Examples with Advanced Parameters
 ```bash
-node scripts/generate.js [options]
+# High quality turbo generation
+node scripts/generate.js --prompt "cyberpunk street" --steps 10 --guidance 1.5
 
-Options:
-  --prompt <text>           Text prompt (required)
-  --negative-prompt <text>  Things to avoid
-  --width <px>              Width in pixels, multiple of 64 (default: 1024)
-  --height <px>             Height in pixels, multiple of 64 (default: 576)
-  --steps <n>               Inference steps (default: 8)
-  --seed <n>                Random seed, 0=random (default: 0)
-  --guidance <f>            Guidance scale (default: 1.0)
-  --sampler <name>          Sampler algorithm (default: unicpc-trailing)
-  --model <filename>        Model filename (default: z_image_turbo_1.0_q6p.ckpt)
-  --output <path>           Output PNG file path
-  --addr <host:port>        gRPC server address (default: 127.0.0.1:7859)
-  --health                  Check server health
-  --list-models             List available models
-```
-
-### Examples
-
-```bash
-# Basic generation
-node scripts/generate.js --prompt "a beautiful sunset over mountains"
-
-# List available models
-node scripts/generate.js --list-models
-
-# High resolution
-node scripts/generate.js --prompt "epic fantasy landscape" --width 1024 --height 768 --steps 12
-
-# Fixed seed for reproducibility
-node scripts/generate.js --prompt "portrait of a dog" --seed 12345 --output dog.png
+# Standard model generation (non-turbo)
+node scripts/generate.js --prompt "oil painting of a dog" --model sd_xl_base_1.0.safetensors --steps 30 --guidance 7.5
 ```
 
 ## Available Models
