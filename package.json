@@ -21,6 +21,15 @@
     "image-generation",
     "grpc"
   ],
+  "files": [
+    "scripts/",
+    "references/",
+    "README.md",
+    "README_CN.md",
+    "SKILL.md",
+    "GEMINI.md",
+    "LICENSE"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
