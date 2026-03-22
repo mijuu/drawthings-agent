@@ -426,6 +426,7 @@ program
     .option('--tls', 'Enable TLS')
     .option('--wait', 'Wait for server', true)
     .option('--wait-timeout <sec>', 'Max wait', '60')
+    .option('--timeout <sec>', 'Total generation timeout', '300')
     .option('--health', 'Check health')
     .option('--list-models', 'List models')
     .parse(process.argv);
@@ -433,6 +434,12 @@ program
 const options = program.opts();
 
 async function main() {
+    // Set global timeout
+    const totalTimeout = parseInt(options.timeout || 300) * 1000;
+    const timeoutHandle = setTimeout(() => {
+        console.error(`\nError: Generation timed out after ${options.timeout} seconds.`);
+        process.exit(1);
+    }, totalTimeout);
     // Show help if no prompt and not checking health or listing models
     if (!options.prompt && !options.health && !options.listModels) {
         program.help();
