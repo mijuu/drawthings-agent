@@ -36,7 +36,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             negativePrompt: { type: "string", description: "Negative prompt to exclude elements." },
             width: { type: "number", description: "Image width (default: 1024)", default: 1024 },
             height: { type: "number", description: "Image height (default: 576)", default: 576 },
-            steps: { type: "number", description: "Number of sampling steps (default: 8)", default: 8 },
+            steps: { type: "number", description: "Number of sampling steps. For Turbo/Lightning models, 8 steps is recommended. For SDXL, use 20-30.", default: 8 },
             seed: { type: "number", description: "Random seed (0 for random)", default: 0 },
             guidance: { type: "number", description: "Guidance scale (default: 1.0)", default: 1.0 },
             model: { type: "string", description: "Model filename (e.g. z_image_turbo_1.0_q6p.ckpt)" },

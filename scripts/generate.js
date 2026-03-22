@@ -45,7 +45,7 @@ const samplerNames = {
     "unicpc-trailing": 17, "unicpc-ays": 18, "tcd-trailing": 19
 };
 
-function buildGenerationConfig(model, width, height, steps, seed, guidanceScale, sampler, upscaler = null, upscalerScaleFactor = 0, loras = [], refiner = null) {
+function buildGenerationConfig(model, width, height, steps, seed, guidanceScale, sampler, upscaler = null, upscalerScaleFactor = 0, loras = [], refiner = null, strength = 1.0) {
     const builder = new flatbuffers.Builder(1024);
     const modelOff = builder.createString(model);
     const upscalerOff = upscaler ? builder.createString(upscaler) : null;
@@ -72,7 +72,7 @@ function buildGenerationConfig(model, width, height, steps, seed, guidanceScale,
     builder.addFieldInt32(slots.seed, seed, 0);
     builder.addFieldInt32(slots.steps, steps, 0);
     builder.addFieldFloat32(slots.guidance_scale, guidanceScale, 0.0);
-    builder.addFieldFloat32(slots.strength, (options.strength !== undefined) ? parseFloat(options.strength) : 1.0, 0.0);
+    builder.addFieldFloat32(slots.strength, strength, 0.0);
     builder.addFieldOffset(slots.model, modelOff, 0);
     builder.addFieldInt8(slots.sampler, sampler, 0);
     
@@ -332,7 +332,8 @@ async function runGrpc(options, seed, outPath) {
         upscalerFile,
         upscaleFactor > 1 ? upscaleFactor : 0,
         loras,
-        options.refinerModel ? { model: options.refinerModel, start: parseFloat(options.refinerStart || 0.7) } : null
+        options.refinerModel ? { model: options.refinerModel, start: parseFloat(options.refinerStart || 0.7) } : null,
+        parseFloat(options.strength || 1.0)
     );
 
     const request = {
