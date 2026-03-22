@@ -1,6 +1,14 @@
-# Skill: Draw Things AI Generation
+# Skill: Draw Things for AI Agents
 
-This skill provides professional-grade local AI image generation via the Draw Things gRPC backend.
+**Slug:** `drawthings-agent`  
+**Display Name:** `Draw Things for AI Agents`
+
+## Overview
+This skill acts as an AI-native interface for the **Draw Things** macOS app. It doesn't replace the app; instead, it provides a powerful CLI and manages the official gRPC server, making professional-grade local image generation seamless for AI agents and developers.
+
+- **Privacy First**: All generation happens locally on your Mac.
+- **Agent Ready**: Structured CLI output and lifecycle management for gRPC servers.
+- **High Performance**: Direct communication via gRPC with support for upscaling and custom models.
 
 ## 🛠 Target Tool
 **Command**: `dt-skill`
@@ -31,7 +39,7 @@ Default is `1024x576` (16:9).
 - **Listing Models**: Use `dt-skill models` to see what is available before suggesting a change.
 
 ### 5. Task Control & Sessions
-When running in OpenClaw, use `is_background: true` to allow real-time progress monitoring.
+When running in environments that support background tasks (like OpenClaw or OpenCode), use `is_background: true` to allow real-time progress monitoring.
 - **Progress**: You will see `Sampling step: X/Y`.
 - **Heartbeat**: Every 30s you will see `... still working ...`.
 - **Timeout**: Default is 600s. For heavy 4x upscales, use `--timeout 1200`.

@@ -1,8 +1,10 @@
-# OpenClaw 技能：Draw Things AI 图像生成
+# Draw Things for AI Agents (面向 AI 代理的本地图像生成接口)
 
 [English Version](README.md)
 
-这是一个为 [OpenClaw](https://github.com/mijuu/openclaw) / Gemini CLI 开发的高性能 Node.js 技能，支持在 macOS 上通过 [Draw Things](https://drawthings.ai/) gRPC 后端进行本地 AI 图像生成。
+这是一个为 AI Agent (包括 [OpenClaw](https://github.com/openclaw/openclaw), Claude, Gemini CLI, OpenCode 等) 开发的高性能 Node.js 接口，旨在连接并管理 macOS 上的 [Draw Things](https://drawthings.ai/) 官方 gRPC 后端，实现本地 AI 图像生成。
+
+该技能将 Draw Things 的专业级本地生成能力转化为“AI 原生 (AI-native)”的 CLI 接口，方便各类支持工具调用的 AI 代理直接使用。
 
 ## 🚀 核心特性
 
@@ -21,18 +23,24 @@
 - **Node.js**：版本 16 或更高。
 - **重要设置**：在 Draw Things 的设置中，**禁用 "Response Compression" (响应压缩)** (也称为 FPY)。该脚本目前不支持 FPY 压缩的张量。
 
-## 📦 安装
+## 📦 安装说明
 
-将此仓库克隆到你的 OpenClaw 技能目录中：
+通过 npm 全局安装：
 
 ```bash
-cd ~/.openclaw/skills
-git clone https://github.com/mijuu/openclaw-skill-drawthings.git drawthings
-cd drawthings
-npm install
-# 可选：将 CLI 链接到全局
-npm link
+npm install -g @mijuu/drawthings
 ```
+
+或者作为 OpenClaw 技能安装：
+
+```bash
+mkdir -p ~/.openclaw/skills/drawthings
+cd ~/.openclaw/skills/drawthings
+npm install @mijuu/drawthings
+```
+
+安装完成后，即可使用 `dt-skill` 命令。
+
 
 ## ⚙️ 配置
 

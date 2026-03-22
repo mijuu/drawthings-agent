@@ -1,7 +1,7 @@
 {
   "name": "@mijuu/drawthings",
   "version": "1.1.0",
-  "description": "High-performance Node.js gRPC client for local AI image generation using the Draw Things backend on macOS.",
+  "description": "An AI-native CLI interface for Draw Things. It manages the official gRPC server and provides a professional local image generation bridge for AI agents on macOS.",
   "main": "scripts/generate.js",
   "bin": {
     "dt-skill": "./scripts/cli.js"
@@ -27,7 +27,12 @@
     "drawthings",
     "ai",
     "image-generation",
-    "grpc"
+    "grpc",
+    "bridge",
+    "cli",
+    "macos",
+    "agent-friendly",
+    "local-ai"
   ],
   "files": [
     "scripts/",
@@ -38,7 +43,7 @@
     "GEMINI.md",
     "LICENSE"
   ],
-  "author": "",
+  "author": "raymond.liang@outlook.com",
   "license": "MIT",
   "dependencies": {
     "@grpc/grpc-js": "^1.12.6",

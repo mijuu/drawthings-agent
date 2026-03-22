@@ -1,8 +1,10 @@
-# OpenClaw Skill: Draw Things AI Image Generation
+# Draw Things for AI Agents
 
 [中文版](README_CN.md)
 
-A high-performance Node.js skill for [OpenClaw](https://github.com/mijuu/openclaw) / Gemini CLI that enables local AI image generation using the [Draw Things](https://drawthings.ai/) gRPC backend on macOS.
+A high-performance Node.js interface for AI Agents (including [OpenClaw](https://github.com/openclaw/openclaw), Claude, Gemini CLI, and OpenCode) that enables local AI image generation by managing and connecting to the official [Draw Things](https://drawthings.ai/) gRPC backend on macOS. 
+
+This skill makes the professional-grade local generation of Draw Things "AI-native" and easily controllable for any agent that supports CLI tool usage.
 
 ## 🚀 Key Features
 
@@ -23,16 +25,21 @@ A high-performance Node.js skill for [OpenClaw](https://github.com/mijuu/opencla
 
 ## 📦 Installation
 
-Clone this repository into your OpenClaw skills directory:
+Install globally via npm:
 
 ```bash
-cd ~/.openclaw/skills
-git clone https://github.com/mijuu/openclaw-skill-drawthings.git drawthings
-cd drawthings
-npm install
-# Optional: Link the CLI globally
-npm link
+npm install -g @mijuu/drawthings
 ```
+
+Or install it as an OpenClaw skill:
+
+```bash
+mkdir -p ~/.openclaw/skills/drawthings
+cd ~/.openclaw/skills/drawthings
+npm install @mijuu/drawthings
+```
+
+After installation, the `dt-skill` command will be available.
 
 ## ⚙️ Configuration
 
