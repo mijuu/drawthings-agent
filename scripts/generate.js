@@ -426,7 +426,7 @@ program
     .option('--tls', 'Enable TLS')
     .option('--wait', 'Wait for server', true)
     .option('--wait-timeout <sec>', 'Max wait', '60')
-    .option('--timeout <sec>', 'Total generation timeout', '300')
+    .option('--timeout <sec>', 'Total generation timeout', '600')
     .option('--health', 'Check health')
     .option('--list-models', 'List models')
     .parse(process.argv);
@@ -435,11 +435,26 @@ const options = program.opts();
 
 async function main() {
     // Set global timeout
-    const totalTimeout = parseInt(options.timeout || 300) * 1000;
+    const timeoutSec = parseInt(options.timeout || 600);
+    const totalTimeout = timeoutSec * 1000;
     const timeoutHandle = setTimeout(() => {
-        console.error(`\nError: Generation timed out after ${options.timeout} seconds.`);
+        console.error(`\nError: Generation timed out after ${timeoutSec} seconds.`);
         process.exit(1);
     }, totalTimeout);
+
+    // Add a simple heartbeat for long-running tasks (like upscale)
+    const heartbeat = setInterval(() => {
+        if (!options.health && !options.listModels) {
+            process.stdout.write('... still working ...\n');
+        }
+    }, 30000); // Every 30s
+
+    const cleanup = (code = 0) => {
+        clearTimeout(timeoutHandle);
+        clearInterval(heartbeat);
+        process.exit(code);
+    };
+
     // Show help if no prompt and not checking health or listing models
     if (!options.prompt && !options.health && !options.listModels) {
         program.help();
@@ -539,10 +554,10 @@ async function main() {
                     console.log('Server Overrides:', JSON.stringify(readableOverride, null, 2));
                 }
             }
-            process.exit(0);
+            cleanup(0);
         } catch (err) {
             console.error(`Health check failed (${finalTls ? 'TLS' : 'Insecure'}): ${err.message}`);
-            process.exit(1);
+            cleanup(1);
         }
         return; // Ensure we don't fall through to generation
     }
@@ -562,11 +577,11 @@ async function main() {
         const result = await (useHttp ? runHttp(options, seed, outPath) : runGrpc(options, seed, outPath));
         console.log(`Image saved to: ${result}`);
         log(`Success: Image saved to ${result}`);
-        process.exit(0);
+        cleanup(0);
     } catch (err) {
         console.error(`Generation failed: ${err.message}`);
         log(`Error: Generation failed - ${err.message}`);
-        process.exit(1);
+        cleanup(1);
     }
 }
 
