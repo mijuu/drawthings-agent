@@ -362,7 +362,7 @@ async function runGrpc(options, seed, outPath) {
 
     return new Promise((resolve, reject) => {
         const call = client.GenerateImage(request);
-        let chunks = Buffer.alloc(0);
+        let chunkList = [];
         call.on('data', (response) => {
             if (response.scaleFactor) console.log(`Response Scale Factor: ${response.scaleFactor}`);
             if (response.currentSignpost) {
@@ -385,13 +385,19 @@ async function runGrpc(options, seed, outPath) {
                 }
             }
             if (response.generatedImages) {
-                for (const img of response.generatedImages) if (img.length > 0) chunks = Buffer.concat([chunks, img]);
+                for (const img of response.generatedImages) {
+                    if (img.length > 0) chunkList.push(img);
+                }
             }
         });
         call.on('error', (err) => reject(new Error(`gRPC Error: ${err.message}`)));
         call.on('end', () => {
-            if (chunks.length === 0) { reject(new Error("No image received")); return; }
-            try { tensorToPng(chunks, outPath); resolve(outPath); } catch (e) { reject(e); }
+            if (chunkList.length === 0) { reject(new Error("No image received")); return; }
+            try { 
+                const finalBuffer = Buffer.concat(chunkList);
+                tensorToPng(finalBuffer, outPath); 
+                resolve(outPath); 
+            } catch (e) { reject(e); }
         });
     });
 }
