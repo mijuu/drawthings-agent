@@ -4,7 +4,7 @@ This document describes the gRPC protocol used by Draw Things server.
 
 ## Server Configuration
 
-**Default endpoint:** `127.0.0.1:7859`
+**Default endpoint:** `localhost:7859`
 
 **Start command:**
 ```bash
@@ -112,13 +112,13 @@ message EchoResponse {
 
 ```bash
 # Using grpcurl (if available)
-grpcurl -plaintext 127.0.0.1:7859 drawthings.MediaGenerationService/Echo
+grpcurl -plaintext localhost:7859 drawthings.MediaGenerationService/Echo
 ```
 
 ### List Models
 
 ```bash
-grpcurl -plaintext 127.0.0.1:7859 drawthings.MediaGenerationService/GetModelList
+grpcurl -plaintext localhost:7859 drawthings.MediaGenerationService/GetModelList
 ```
 
 ### Generate Image (Node.js with @grpc/grpc-js)
@@ -138,7 +138,7 @@ const packageDefinition = protoLoader.loadSync('drawthings.proto', {
 
 const drawthingsProto = grpc.loadPackageDefinition(packageDefinition);
 const client = new drawthingsProto.drawthings.MediaGenerationService(
-  '127.0.0.1:7859',
+  'localhost:7859',
   grpc.credentials.createInsecure()
 );
 
@@ -199,6 +199,6 @@ The actual `.proto` file can be extracted from the Draw Things app or obtained f
 
 ```bash
 # If server supports reflection
-grpcurl -plaintext 127.0.0.1:7859 list
-grpcurl -plaintext 127.0.0.1:7859 describe drawthings.MediaGenerationService
+grpcurl -plaintext localhost:7859 list
+grpcurl -plaintext localhost:7859 describe drawthings.MediaGenerationService
 ```

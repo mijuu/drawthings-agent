@@ -17,7 +17,7 @@ This skill controls an external server. **Do not move or copy** these heavy asse
 
 -   **Server Binary**: `[Path to your Draw Things gRPC server binary, e.g., /path/to/gRPCServerCLI-macOS]` (Download from: https://github.com/drawthingsai/draw-things-community/releases)
 -   **Models Directory**: `[Path to your Draw Things models, e.g., ~/Library/Containers/com.liuliu.draw-things/Data/Documents/Models]`
--   **Default Address**: `127.0.0.1:7859` (No TLS, no compression).
+-   **Default Address**: `localhost:7859` (No TLS, no compression).
 
 ## Current Status: Pure Node.js Implementation
 
@@ -59,7 +59,7 @@ dt-skill gen --prompt "a serene mountain lake at sunrise" --output output.png
 
 | Command | Description |
 | :--- | :--- |
-| `npm run start-server` | Starts the Draw Things gRPC server on `127.0.0.1:7859`. |
+| `npm run start-server` | Starts the Draw Things gRPC server on `localhost:7859`. |
 | `npm run generate -- [options]` | Generates an image using `scripts/generate.js`. |
 | `npm run health` | Checks if the gRPC server is responsive. |
 | `npm run models` | Placeholder (model listing depends on local filesystem access). |

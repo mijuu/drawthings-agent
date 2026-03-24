@@ -39,7 +39,7 @@ program
   .description('Manage skill configuration (server path, models, etc.)')
   .option('--server-path <path>', 'Path to the Draw Things gRPC server binary')
   .option('--models-path <path>', 'Path to the directory containing models')
-  .option('--addr <host:port>', 'Server address (default: 127.0.0.1:7859)')
+  .option('--addr <host:port>', 'Server address (default: localhost:7859)')
   .option('--tls <boolean>', 'Enable/Disable TLS (default: true)')
   .option('--show', 'Show current configuration')
   .allowUnknownOption()

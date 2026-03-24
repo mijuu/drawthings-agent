@@ -406,7 +406,7 @@ async function runGrpc(options, seed, outPath) {
 async function listModels(options) {
     const packageDefinition = protoLoader.loadSync(path.join(__dirname, 'imageService.proto'), { keepCase: true });
     const drawthings = grpc.loadPackageDefinition(packageDefinition);
-    const finalAddr = options.addr || config.get('DRAWTHINGS_SERVER_ADDR') || '127.0.0.1:7859';
+    const finalAddr = options.addr || config.get('DRAWTHINGS_SERVER_ADDR') || 'localhost:7859';
     const finalTls = options.tls || (config.get('DRAWTHINGS_USE_TLS') !== false);
     let credentials = finalTls ? grpc.credentials.createSsl(fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'))) : grpc.credentials.createInsecure();
     const client = new drawthings.ImageGenerationService(finalAddr, credentials);
@@ -465,7 +465,7 @@ async function listModels(options) {
 async function checkHealth(options) {
     const packageDefinition = protoLoader.loadSync(path.join(__dirname, 'imageService.proto'), { keepCase: true });
     const drawthings = grpc.loadPackageDefinition(packageDefinition);
-    const finalAddr = options.addr || config.get('DRAWTHINGS_SERVER_ADDR') || '127.0.0.1:7859';
+    const finalAddr = options.addr || config.get('DRAWTHINGS_SERVER_ADDR') || 'localhost:7859';
     const finalTls = options.tls || (config.get('DRAWTHINGS_USE_TLS') !== false);
     let credentials = finalTls ? grpc.credentials.createSsl(fs.readFileSync(path.join(__dirname, 'drawthings-ca.pem'))) : grpc.credentials.createInsecure();
     const client = new drawthings.ImageGenerationService(finalAddr, credentials);
@@ -479,7 +479,7 @@ async function checkHealth(options) {
 }
 
 async function generate(options) {
-    const finalAddr = options.addr || config.get('DRAWTHINGS_SERVER_ADDR') || '127.0.0.1:7859';
+    const finalAddr = options.addr || config.get('DRAWTHINGS_SERVER_ADDR') || 'localhost:7859';
     options.addr = finalAddr;
 
     if (options.prompt && (options.prompt.endsWith('...') || options.prompt.endsWith('…'))) {

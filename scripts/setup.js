@@ -8,7 +8,7 @@ const path = require('path');
 program
     .option('--server-path <path>', 'Path to the Draw Things gRPC server binary')
     .option('--models-path <path>', 'Path to the directory containing models')
-    .option('--addr <host:port>', 'Server address (e.g. 127.0.0.1:7859)')
+    .option('--addr <host:port>', 'Server address (e.g. localhost:7859)')
     .option('--tls <boolean>', 'Enable/Disable TLS (true/false)')
     .option('--show', 'Show current configuration')
     .parse(process.argv);

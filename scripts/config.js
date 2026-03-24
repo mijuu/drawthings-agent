@@ -27,7 +27,7 @@ class Config {
         const defaultModels = path.join(homedir, 'Library/Containers/com.liuliu.draw-things/Data/Documents/Models');
         
         this.data = {
-            'DRAWTHINGS_SERVER_ADDR': '127.0.0.1:7859',
+            'DRAWTHINGS_SERVER_ADDR': 'localhost:7859',
             'DRAWTHINGS_USE_TLS': true,
             'DRAWTHINGS_MODELS_PATH': defaultModels,
             'DRAWTHINGS_SERVER_PATH': ''

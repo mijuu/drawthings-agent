@@ -11,7 +11,7 @@ const config = require('./config');
 
 const serverPath = config.get('DRAWTHINGS_SERVER_PATH');
 const modelsPath = config.get('DRAWTHINGS_MODELS_PATH');
-const addrStr = config.get('DRAWTHINGS_SERVER_ADDR') || '127.0.0.1:7859';
+const addrStr = config.get('DRAWTHINGS_SERVER_ADDR') || 'localhost:7859';
 const addr = addrStr.split(':');
 const useTls = config.get('DRAWTHINGS_USE_TLS') !== false;
 
