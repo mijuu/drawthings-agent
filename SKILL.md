@@ -45,11 +45,16 @@ Default is `1024x576` (16:9).
 - **Default**: `z_image_turbo_1.0_q6p.ckpt` (Fastest, 8 steps).
 - **Listing Models**: Use `dt-skill models` to see what is available before suggesting a change.
 
-### 5. Task Control & Sessions
-When running in environments that support background tasks (like OpenClaw or OpenCode), use `is_background: true` to allow real-time progress monitoring.
-- **Progress**: You will see `Sampling step: X/Y`.
-- **Heartbeat**: Every 30s you will see `... still working ...`.
-- **Timeout**: Default is 600s. For heavy 4x upscales, use `--timeout 1200`.
+### 5. Task Control & Sessions (Auto-Cleanup Protocol)
+To keep the workspace clean and avoid session clutter, you **MUST** use a "Stateless Worker" model:
+
+1.  **SPAWN WITH DELETE**: For every drawing task, call `sessions_spawn` with the following parameters:
+    *   `task`: "Draw: [PROMPT]"
+    *   `label`: "drawthings-agent"
+    *   `cleanup`: "delete" (CRITICAL: This ensures the sub-task is destroyed immediately after the image is delivered).
+2.  **CONCURRENCY**: If the user requests multiple images at once, you **SHOULD** spawn them as separate sub-tasks. Since each will be deleted upon completion, it will not clutter the long-term UI.
+3.  **TIMEOUT**: For standard generation, use default timeout. For 4x upscales, set `runTimeoutSeconds: 1200`.
+4.  **RESULT**: Once the image is generated, it will be announced back to this chat, and the sub-session will vanish from the sidebar.
 
 ## ⚠️ CRITICAL CONSTRAINTS for AI
 1. **NO TRUNCATION**: Never use "..." or "etc." in the prompt. Provide the complete text.
